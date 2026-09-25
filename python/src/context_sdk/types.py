@@ -7,7 +7,13 @@ from typing import Any, Callable, Dict, List, NamedTuple, Optional, Protocol
 # identify() takes them as named parameters, so a typo is a TypeError
 # rather than something this has to catch. organization_id is the
 # customer's own organisation, not our tenant - that is tenant_id.
-RESERVED_ACTOR_KEYS = ("user_id", "device_id", "process_id", "organization_id")
+RESERVED_ACTOR_KEYS = (
+    "user_id",
+    "device_id",
+    "process_id",
+    "organization_id",
+    "session_id",
+)
 
 # One event's budget on the wire. Past this the server refuses the entry,
 # so the client drops it at log() instead of batching it.

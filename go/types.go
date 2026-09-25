@@ -42,6 +42,10 @@ func ProcessID(value string) ActorField { return ActorField{"process_id", value}
 // tenant, which is TenantID and is set once on the client.
 func OrganizationID(value string) ActorField { return ActorField{"organization_id", value} }
 
+// SessionID identifies the run an event belongs to - a sandbox session,
+// a conversation, a job run - shared by everything inside it.
+func SessionID(value string) ActorField { return ActorField{"session_id", value} }
+
 // Timer is the part of a scheduled call the client needs back.
 type Timer interface {
 	Stop() bool

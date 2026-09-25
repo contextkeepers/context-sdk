@@ -147,6 +147,8 @@ func runCase(t *testing.T, kase conformanceCase) {
 					fields = append(fields, ProcessID(value.(string)))
 				case "organization_id":
 					fields = append(fields, OrganizationID(value.(string)))
+				case "session_id":
+					fields = append(fields, SessionID(value.(string)))
 				default:
 					// Unreachable for a real caller - the constructor
 					// would not exist. Only a case Go skips gets here.

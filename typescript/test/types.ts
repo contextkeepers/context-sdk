@@ -9,14 +9,14 @@ const member: Logger = ctx.identify({ user_id: "user_123", organization_id: "org
 member.log("checkout_completed", { plan: "pro", amount: 49 });
 
 // Narrowing a scope returns another scope, not void.
-const narrower: Logger = member.identify({ device_id: "dev_9f2" });
+const narrower: Logger = member.identify({ device_id: "dev_9f2", session_id: "sess_1" });
 narrower.log("clicked");
 
 // @ts-expect-error a typo'd identity key must not compile
 ctx.identify({ usr_id: "user_123" });
 
 // @ts-expect-error nor an invented one, however plausible
-ctx.identify({ session_id: "sess_1" });
+ctx.identify({ request_id: "req_1" });
 
 // @ts-expect-error actor values are ids, not arbitrary payloads
 ctx.identify({ user_id: 123 });

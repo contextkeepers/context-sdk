@@ -51,7 +51,7 @@ entries that are valid JSON of the wrong shape can be rejected individually.
   "timestamp": "2026-09-25T14:03:11.482Z",
   "tenant_id": "org_acme",
   "event": "checkout_completed",
-  "actor": { "user_id": "user_123", "organization_id": "org_42", "device_id": "camera_7" },
+  "actor": { "user_id": "user_123", "organization_id": "org_42", "session_id": "sess_8f21" },
   "metadata": { "plan": "pro", "amount": 49 }
 }
 ```
@@ -98,11 +98,17 @@ subsequent event; the caller never passes it per event.
 | `organization_id` | `identify()` | The organisation, team or workspace inside the *customer's* product that the person acted in. |
 | `device_id` | `identify()` | The machine or instrument the event came from - a kiosk, a camera, a sensor, a browser install the caller persists itself. |
 | `process_id` | `identify()` | A batch job or service, where no person is behind it. |
+| `session_id` | `identify()` | The run the events belong to - a sandbox session, a conversation, a job run. One id shared by everything that happened inside it. |
 
 All are optional and all may be absent together - a service event has no person,
 no organisation, no machine and possibly no job id either. They co-occur freely:
-a person acting inside an organisation from a particular camera is three of them
-on one event, which is why `identify()` takes several at once.
+a person acting inside an organisation on one session is three of them on one
+event, which is why `identify()` takes several at once.
+
+`session_id` is unbounded where the others are not, and that is fine: `actor` is
+a JSON column, not the `LowCardinality` one an event name lands in. It belongs
+here rather than in `metadata` because every event of a run carries it and none
+of them should have to pass it - which is what `actor` is for.
 
 `organization_id` is not `tenant_id`. `tenant_id` is which customer of ours sent
 the event; `organization_id` is a grouping inside that customer's own product.

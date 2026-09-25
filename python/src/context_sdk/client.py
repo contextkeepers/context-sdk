@@ -33,6 +33,7 @@ def _actor(
     device_id: Optional[str],
     process_id: Optional[str],
     organization_id: Optional[str],
+    session_id: Optional[str],
 ) -> Dict[str, str]:
     """Only the names below exist, because they are parameters rather
     than dict keys - a typo is a TypeError at the call site."""
@@ -41,6 +42,7 @@ def _actor(
         ("device_id", device_id),
         ("process_id", process_id),
         ("organization_id", organization_id),
+        ("session_id", session_id),
     )
     return {key: value for key, value in pairs if value is not None}
 
@@ -67,10 +69,11 @@ class Logger:
         device_id: Optional[str] = None,
         process_id: Optional[str] = None,
         organization_id: Optional[str] = None,
+        session_id: Optional[str] = None,
     ) -> "Logger":
         """Adds to this identity without touching it."""
         merged = dict(self._actor)
-        merged.update(_actor(user_id, device_id, process_id, organization_id))
+        merged.update(_actor(user_id, device_id, process_id, organization_id, session_id))
         return Logger(self._context, merged)
 
 
@@ -107,13 +110,14 @@ class Context:
         device_id: Optional[str] = None,
         process_id: Optional[str] = None,
         organization_id: Optional[str] = None,
+        session_id: Optional[str] = None,
     ) -> Logger:
         """Opens a scope for whoever the following events belong to.
 
         Returns a logger rather than setting client state, so two
         threads cannot attribute each other's events.
         """
-        return Logger(self, _actor(user_id, device_id, process_id, organization_id))
+        return Logger(self, _actor(user_id, device_id, process_id, organization_id, session_id))
 
     def log(self, event: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         """For events with nobody behind them - a cache warming, a job

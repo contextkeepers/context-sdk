@@ -9,7 +9,8 @@
       "identify": {
         "user_id": "user_123",
         "organization_id": "org_42",
-        "device_id": "camera_7"
+        "device_id": "camera_7",
+        "session_id": "sess_8f21"
       }
     },
     {
@@ -30,12 +31,13 @@
             "actor": {
               "user_id": "user_123",
               "organization_id": "org_42",
-              "device_id": "camera_7"
+              "device_id": "camera_7",
+              "session_id": "sess_8f21"
             }
           }
         ]
       }
     ]
   },
-  "why": "A person acts inside an organisation on a particular machine; all of it belongs on the event and none of it should need a second call."
+  "why": "A person acts inside an organisation, on a particular machine, within one run; all of it belongs on the event and none of it should need a second call."
 }

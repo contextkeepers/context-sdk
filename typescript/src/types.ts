@@ -25,6 +25,7 @@ export const RESERVED_ACTOR_KEYS = [
   "device_id",
   "process_id",
   "organization_id",
+  "session_id",
 ] as const;
 
 export type ActorKey = (typeof RESERVED_ACTOR_KEYS)[number];
