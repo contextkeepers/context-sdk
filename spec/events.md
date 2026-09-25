@@ -188,35 +188,42 @@ and failing quietly would leave identity permanently unqueryable.
 `pagehide` via `sendBeacon`, or it loses the last event of every session. A
 server client drains on `close()`.
 
-`close()` MUST be reached from the process's own shutdown handling, not from a
-deferred call or an exit hook. Containers are stopped with SIGTERM, and Go's
-default action on SIGTERM terminates the process without running deferred
-functions at all - so `defer client.Close()` in a long-lived service loses the
-buffer on every deploy. SIGKILL runs nothing, anywhere, by design.
+`close()` MUST be reached from the process's own shutdown handling. A deferred
+call, a `finally` or a context manager satisfies that only when the signal is
+what makes the process return - a handler that cancels a context the main path
+waits on, or one that raises.
+
+By default it is not. Go terminates on an unhandled SIGTERM without running
+deferred functions. Python is the same and quieter about it: it installs no
+default SIGTERM handler, so `__exit__`, `finally` and `atexit` are all skipped -
+while SIGINT raises `KeyboardInterrupt` and runs all three, so ctrl-c in
+development proves nothing about a container stopped with SIGTERM. `os.Exit`,
+`log.Fatal` and SIGKILL run nothing, anywhere, by design.
 
 `close()` blocks, and that is the feature - a 200 means the events are stored, so
-waiting is what makes the guarantee worth anything. But the blocking MUST be
-bounded by a configured deadline (`closeTimeoutMs` / `close_timeout_ms` /
-`CloseTimeout`, default 5s), set comfortably shorter than the container's grace
-period. An unbounded drain is self-defeating: outlive the grace period and SIGKILL
-lands mid-send, losing everything it was holding rather than the part it could
-not send.
+waiting is what makes the guarantee worth anything.
 
-Within that deadline a client MUST retry, since a rolling restart of the sink is
-exactly when the last batch fails once. At the deadline it MUST drop what remains,
-count it, and **report the number** - a deploy quietly losing a batch per instance
-is the kind of thing nobody notices for months.
+It sends **once**. Whatever that attempt does not store is dropped and counted;
+there is no retry and no deadline to configure. Close is already the shutdown
+path, where the caller's own budget is the only one that matters and a second
+attempt spends time the caller did not offer. A configured deadline was worse
+than nothing: it bounded only the decision to sleep before a retry, never the
+drain, so the number it promised to cap was not the one it capped.
 
-What that leaves unprotected is bounded by the flush interval: a crash or a
+The cost is real and accepted: a rolling restart of the sink is exactly when the
+last batch fails once, and a single attempt drops it. `dropped` is where that
+shows up, so a client MUST count it there.
+
+What `close()` leaves unprotected is bounded by the flush interval: a crash or a
 SIGKILL can lose at most one interval's worth of events. That interval is the
 knob if either is a real risk, traded against round trips.
 
-A client MAY offer an opt-in signal helper that drains and then restores the
-default action and re-raises, so the exit status the supervisor sees is unchanged.
-It MUST NOT install one by default: registering a signal suppresses Go's default
-termination, so a library doing it unasked stops the caller's process from exiting
-on SIGTERM at all unless they also handle it - turning a graceful stop into a
-grace-period hang followed by SIGKILL.
+A client MUST NOT offer a helper that installs its own signal handler. Such a
+helper has to decide when the process dies and cannot know what else the caller's
+shutdown still has to do, so it either cuts that shutdown short or drops the
+events the caller's own handler was about to log. Registering a signal also
+suppresses the default termination process-wide, which a library must not do to
+its caller.
 
 A client MUST also survive a retry that was armed before `close()` and fires
 after it. Dropping and counting that batch is correct; reaching into a shut down

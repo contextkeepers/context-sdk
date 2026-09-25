@@ -21,7 +21,6 @@ RUNNER_DEFAULTS = {
     "flush_interval_ms": 5000,
     "max_queue_size": 10000,
     "max_retries": 3,
-    "close_timeout_ms": 5000,
 }
 
 

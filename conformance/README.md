@@ -32,7 +32,6 @@ everything else comes from the table below.
 | `flush_interval_ms` | 5000 |
 | `max_queue_size` | 10000 |
 | `max_retries` | 3 |
-| `close_timeout_ms` | 5000 |
 
 These are the *runner's* defaults, not any client's. The libraries differ on
 purpose - a browser batches at 20 where a server batches at 500 - so a runner

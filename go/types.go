@@ -3,7 +3,6 @@
 package ctxsdk
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -42,16 +41,6 @@ func ProcessID(value string) ActorField { return ActorField{"process_id", value}
 // OrganizationID identifies the customer's own organisation - not our
 // tenant, which is TenantID and is set once on the client.
 func OrganizationID(value string) ActorField { return ActorField{"organization_id", value} }
-
-// ShutdownIncompleteError reports events Close could not send before
-// its deadline. They are counted in Dropped either way.
-type ShutdownIncompleteError struct {
-	Abandoned int
-}
-
-func (e *ShutdownIncompleteError) Error() string {
-	return fmt.Sprintf("closed with %d event(s) unsent", e.Abandoned)
-}
 
 // Timer is the part of a scheduled call the client needs back.
 type Timer interface {

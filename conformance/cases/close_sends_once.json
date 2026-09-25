@@ -1,0 +1,31 @@
+{
+  "name": "close_sends_once",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 60000,
+    "max_retries": 3
+  },
+  "responses": [
+    {
+      "status": 500
+    },
+    {
+      "status": 200
+    }
+  ],
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "close": {}
+    }
+  ],
+  "expect": {
+    "request_count": 1,
+    "dropped": 1
+  },
+  "why": "close() makes one attempt and counts what it could not store, even where a retry would have succeeded. max_retries governs the interval and batch-size flushes, not the shutdown path: close is the caller's own budget, and a second attempt spends time nobody offered."
+}

@@ -16,14 +16,8 @@ func main() {
 		Endpoint:  "http://127.0.0.1:8099/logs/ingest",
 		BatchSize: 3,
 	})
-	// Drains on the way out, which is what sends a batch that never
-	// reached its threshold. The error names what it could not send, so
-	// a silent loss on every run is not possible.
-	defer func() {
-		if err := client.Close(); err != nil {
-			fmt.Println("shutdown:", err)
-		}
-	}()
+	// Drains when this process ends
+	defer client.Close()
 
 	// The job itself is the actor for anything not tied to a customer.
 	job := client.Identify(ctxsdk.ProcessID("nightly_rollup_2026_09_25"))

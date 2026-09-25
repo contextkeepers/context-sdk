@@ -52,7 +52,6 @@ export interface Options {
   // How long close() may spend draining. Must be comfortably shorter
   // than the container's grace period: a drain that outlives it is
   // SIGKILLed mid-send and loses everything it was holding.
-  closeTimeoutMs?: number;
   clock?: Clock;
   transport?: Transport;
 }

@@ -14,9 +14,6 @@ const (
 	DefaultFlushInterval = 5 * time.Second
 	DefaultMaxQueueSize  = 10000
 	DefaultMaxRetries    = 3
-	// Inside ECS's 30s default grace period, with room for the app's
-	// own shutdown work.
-	DefaultCloseTimeout = 5 * time.Second
 
 	retryBase = 500 * time.Millisecond
 	retryCap  = 30 * time.Second
@@ -30,13 +27,9 @@ type Options struct {
 	FlushInterval time.Duration
 	MaxQueueSize  int
 	MaxRetries    int
-	// How long Close may spend draining. Must be comfortably shorter
-	// than the container's grace period: a drain that outlives it is
-	// SIGKILLed mid-send and loses everything it was holding.
-	CloseTimeout time.Duration
-	Clock        Clock
-	Transport    Transport
-	Dispatcher   Dispatcher
+	Clock         Clock
+	Transport     Transport
+	Dispatcher    Dispatcher
 }
 
 type Client struct {
@@ -44,7 +37,6 @@ type Client struct {
 	batchSize     int
 	flushInterval time.Duration
 	maxRetries    int
-	closeTimeout  time.Duration
 	clock         Clock
 	transport     Transport
 	dispatcher    Dispatcher
@@ -68,9 +60,6 @@ func New(options Options) *Client {
 	if options.MaxRetries == 0 {
 		options.MaxRetries = DefaultMaxRetries
 	}
-	if options.CloseTimeout == 0 {
-		options.CloseTimeout = DefaultCloseTimeout
-	}
 	if options.Endpoint == "" {
 		options.Endpoint = DefaultEndpoint
 	}
@@ -89,7 +78,6 @@ func New(options Options) *Client {
 		batchSize:     options.BatchSize,
 		flushInterval: options.FlushInterval,
 		maxRetries:    options.MaxRetries,
-		closeTimeout:  options.CloseTimeout,
 		clock:         options.Clock,
 		transport:     options.Transport,
 		dispatcher:    options.Dispatcher,
@@ -201,25 +189,20 @@ func (c *Client) Flush() {
 }
 
 // Close drains before returning - blocking is the point, since a 200
-// means the events are stored. Bounded by CloseTimeout, because a drain
-// that outlives the grace period is SIGKILLed and loses everything it
-// was holding.
+// means the events are stored.
 //
-// It returns *ShutdownIncompleteError when it had to abandon events, so
-// a deploy that quietly loses a batch per instance is visible.
-func (c *Client) Close() error {
+// One attempt per batch, no retry: this is the caller's shutdown budget,
+// and a second attempt spends time they did not offer. Whatever the
+// attempt does not store is counted in Dropped.
+func (c *Client) Close() {
 	c.mu.Lock()
 	c.closed = true
 	c.mu.Unlock()
 	c.disarm()
 
-	deadline := c.clock.Now().Add(c.closeTimeout)
 	// Work already handed to a background send, which the loop below
 	// does not own.
 	c.dispatcher.Drain()
-
-	abandoned := 0
-	attempt := 0
 
 	c.mu.Lock()
 	batch := c.queue.drain()
@@ -227,50 +210,24 @@ func (c *Client) Close() error {
 
 	for len(batch) > 0 {
 		result := c.transport.Send(Batch{Entries: batch})
-		status := result.Status
-		if status >= 200 && status < 300 {
-			c.mu.Lock()
-			batch = c.queue.drain()
-			c.mu.Unlock()
-			attempt = 0
-			continue
-		}
-		if status == 400 && result.Reported {
-			abandoned += result.Rejected
-			c.mu.Lock()
+
+		c.mu.Lock()
+		switch {
+		case result.Status >= 200 && result.Status < 300:
+			// The whole batch is stored.
+		case result.Status == 400 && result.Reported:
+			// The server named what it refused; the rest was stored.
 			c.queue.dropped += result.Rejected
-			batch = c.queue.drain()
-			c.mu.Unlock()
-			attempt = 0
-			continue
-		}
-		if !retryable(status) || attempt >= c.maxRetries {
-			abandoned += len(batch)
-			c.mu.Lock()
+		default:
 			c.queue.dropped += len(batch)
-			c.mu.Unlock()
-			break
 		}
-		wait := retryBase << attempt
-		if wait > retryCap {
-			wait = retryCap
-		}
-		if c.clock.Now().Add(wait).After(deadline) {
-			abandoned += len(batch)
-			c.mu.Lock()
-			c.queue.dropped += len(batch)
-			c.mu.Unlock()
-			break
-		}
-		c.clock.Sleep(wait)
-		attempt++
+		// Whatever arrived while that send was in flight, sent on the
+		// same one-attempt terms.
+		batch = c.queue.drain()
+		c.mu.Unlock()
 	}
 
 	c.dispatcher.Shutdown()
-	if abandoned > 0 {
-		return &ShutdownIncompleteError{Abandoned: abandoned}
-	}
-	return nil
 }
 
 // Dropped counts events discarded for a full queue, a dead sink, or a

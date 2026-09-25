@@ -36,7 +36,6 @@ function build(kase: Case) {
     flushIntervalMs: (config.flush_interval_ms as number) ?? 5000,
     maxQueueSize: (config.max_queue_size as number) ?? 10000,
     maxRetries: (config.max_retries as number) ?? 3,
-    closeTimeoutMs: (config.close_timeout_ms as number) ?? 5000,
     clock,
     transport,
   });

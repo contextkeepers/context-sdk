@@ -22,6 +22,6 @@ for (const [org, user] of [["org_42", "user_1"], ["org_42", "user_2"], ["org_77"
 }
 
 // Sends whatever the batch threshold did not. A job that exits without
-// this loses its last events; the count says what it could not send.
-const abandoned = await ctx.close();
-console.log(abandoned === 0 ? "done" : `done, ${abandoned} event(s) unsent`);
+// this loses its last events.
+await ctx.close();
+console.log("done");

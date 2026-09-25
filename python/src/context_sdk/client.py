@@ -17,7 +17,6 @@ DEFAULT_MAX_QUEUE_SIZE = 10000
 DEFAULT_MAX_RETRIES = 3
 # Inside ECS's 30s default grace period, with room for the app's own
 # shutdown work.
-DEFAULT_CLOSE_TIMEOUT_MS = 5000
 
 RETRY_BASE_MS = 500
 RETRY_CAP_MS = 30000
@@ -84,7 +83,6 @@ class Context:
         flush_interval_ms: int = DEFAULT_FLUSH_INTERVAL_MS,
         max_queue_size: int = DEFAULT_MAX_QUEUE_SIZE,
         max_retries: int = DEFAULT_MAX_RETRIES,
-        close_timeout_ms: int = DEFAULT_CLOSE_TIMEOUT_MS,
         clock: Optional[Clock] = None,
         transport: Optional[Transport] = None,
         dispatcher: Optional[Dispatcher] = None,
@@ -93,7 +91,6 @@ class Context:
         self._batch_size = batch_size
         self._flush_interval_ms = flush_interval_ms
         self._max_retries = max_retries
-        self._close_timeout_ms = close_timeout_ms
         self._clock = clock or SystemClock()
         self._transport = transport or HttpTransport(endpoint)
         self._dispatcher = dispatcher or ThreadDispatcher()
@@ -131,54 +128,40 @@ class Context:
         if batch:
             self._send(batch, 0)
 
-    def close(self) -> int:
+    def close(self) -> None:
         """Drains before returning - blocking is the point, since a 200
-        means the events are stored. Bounded by close_timeout_ms, because
-        a drain that outlives the grace period is SIGKILLed and loses
-        everything it was holding. Returns how many it had to abandon.
+        means the events are stored.
+
+        One attempt per batch, no retry: this is the caller's shutdown
+        budget, and a second attempt spends time they did not offer.
+        Whatever the attempt does not store is counted in dropped.
         """
         with self._lock:
             self._closed = True
         self._disarm()
 
-        deadline = self._clock.now() + self._close_timeout_ms
         # Work already handed to a background send, which the loop below
         # does not own.
         self._dispatcher.drain()
 
-        abandoned = 0
-        attempt = 0
         with self._lock:
             batch = self._queue.drain()
 
         while batch:
             status, rejected = self._transport.send({"entries": batch})
             if 200 <= status < 300:
-                with self._lock:
-                    batch = self._queue.drain()
-                attempt = 0
-                continue
-            if status == 400 and rejected is not None:
-                abandoned += rejected
+                pass
+            elif status == 400 and rejected is not None:
+                # The server named what it refused; the rest was stored.
                 self._queue.record_dropped(rejected)
-                with self._lock:
-                    batch = self._queue.drain()
-                attempt = 0
-                continue
-            if not _retryable(status) or attempt >= self._max_retries:
-                abandoned += len(batch)
+            else:
                 self._queue.record_dropped(len(batch))
-                break
-            wait = min(RETRY_BASE_MS * (2**attempt), RETRY_CAP_MS)
-            if self._clock.now() + wait > deadline:
-                abandoned += len(batch)
-                self._queue.record_dropped(len(batch))
-                break
-            self._clock.sleep(wait)
-            attempt += 1
+            # Whatever arrived while that send was in flight, sent on the
+            # same one-attempt terms.
+            with self._lock:
+                batch = self._queue.drain()
 
         self._dispatcher.shutdown()
-        return abandoned
 
     @property
     def dropped(self) -> int:

@@ -19,7 +19,6 @@ const DEFAULTS = {
   maxRetries: 3,
   // Inside ECS's 30s default grace period with room for the app's own
   // shutdown work.
-  closeTimeoutMs: 5000,
 };
 
 // First retry waits this long, doubling each attempt, capped.
@@ -71,7 +70,6 @@ export class Context {
   private readonly batchSize: number;
   private readonly flushIntervalMs: number;
   private readonly maxRetries: number;
-  private readonly closeTimeoutMs: number;
   private readonly clock: Clock;
   private readonly transport: Transport;
   private readonly queue: EventQueue;
@@ -85,7 +83,6 @@ export class Context {
     this.batchSize = options.batchSize ?? DEFAULTS.batchSize;
     this.flushIntervalMs = options.flushIntervalMs ?? DEFAULTS.flushIntervalMs;
     this.maxRetries = options.maxRetries ?? DEFAULTS.maxRetries;
-    this.closeTimeoutMs = options.closeTimeoutMs ?? DEFAULTS.closeTimeoutMs;
     this.clock = options.clock ?? systemClock;
     this.transport =
       options.transport ?? new HttpTransport(options.endpoint ?? DEFAULT_ENDPOINT);
@@ -156,51 +153,35 @@ export class Context {
   }
 
   // Drains before returning - blocking is the point, since a 200 means
-  // the events are stored. Bounded by closeTimeoutMs, because a drain
-  // that outlives the grace period is SIGKILLed and loses everything it
-  // was holding. Returns how many events it had to abandon.
-  async close(): Promise<number> {
+  // the events are stored.
+  //
+  // One attempt per batch, no retry: this is the caller's shutdown
+  // budget, and a second attempt spends time they did not offer.
+  // Whatever the attempt does not store is counted in dropped.
+  async close(): Promise<void> {
     this.closed = true;
     this.disarm();
 
-    const deadline = this.clock.now() + this.closeTimeoutMs;
-    // Work already handed to a background send, which the deadline loop
-    // below does not own.
+    // Work already handed to a background send, which the loop below
+    // does not own.
     await this.settled();
 
-    let abandoned = 0;
-    let attempt = 0;
     let batch = this.queue.drain();
 
     while (batch.length > 0) {
       const { status, rejected } = await this.transport.send({ entries: batch });
       if (status >= 200 && status < 300) {
-        batch = this.queue.drain();
-        attempt = 0;
-        continue;
-      }
-      if (status === 400 && rejected !== undefined) {
-        abandoned += rejected;
+        // The whole batch is stored.
+      } else if (status === 400 && rejected !== undefined) {
+        // The server named what it refused; the rest was stored.
         this.queue.recordDropped(rejected);
-        batch = this.queue.drain();
-        attempt = 0;
-        continue;
-      }
-      if (!retryable(status) || attempt >= this.maxRetries) {
-        abandoned += batch.length;
+      } else {
         this.queue.recordDropped(batch.length);
-        break;
       }
-      const wait = Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_CAP_MS);
-      if (this.clock.now() + wait > deadline) {
-        abandoned += batch.length;
-        this.queue.recordDropped(batch.length);
-        break;
-      }
-      await this.clock.sleep(wait);
-      attempt++;
+      // Whatever arrived while that send was in flight, sent on the same
+      // one-attempt terms.
+      batch = this.queue.drain();
     }
-    return abandoned;
   }
 
   get dropped(): number {

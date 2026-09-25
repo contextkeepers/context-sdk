@@ -22,8 +22,8 @@ so the three read as translations of one another.
 | Example | Shows |
 |---|---|
 | `node/` | A backend service in TypeScript. `close()` drains what the batch threshold did not. |
-| `python/` | The same, via the context manager, which closes on the way out. |
-| `go/` | The same, with `defer client.Close()`. |
+| `python/` | The same, calling `close()` outright - see below for why not `with`. |
+| `go/` | The same, with `defer client.Close()`, which a signal-driven return also reaches. |
 
 The frontend concerns with no server-side equivalent - dropping a scope at
 logout, and flushing on the way out so the last event of a session survives - are
@@ -31,29 +31,41 @@ in `spec/events.md` rather than in an example, since a browser cannot run
 TypeScript without a bundler and an example nobody can execute earns its keep
 less than the spec does.
 
-## These are jobs, not services
+## A job and a service close differently
 
-Both examples exit normally, so `close()` on the way out is enough. A long-lived
-service is different: SIGTERM terminates a Go process without running deferred
-functions, so `close()` has to hang off the same signal handling the rest of the
-service already uses.
+These examples are jobs. A job exits normally, so closing on the way out is
+enough, which is why none of them handles a signal.
+
+Go reaches `defer client.Close()` on any normal return, so the example uses it.
+Python's example calls `close()` outright instead: Python installs no default
+SIGTERM handler, so a container stopped by one skips `__exit__`, `finally` and
+`atexit` alike. SIGINT *does* raise `KeyboardInterrupt` and unwind through all
+three, so `with` looks correct under ctrl-c and loses the buffer on every deploy.
+Reaching for `with` in a service means also installing
+`signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))`.
+
+A long-lived service never exits on its own, so it has no "way out" to close on -
+the close hangs off the signal handling the service already has. There is one
+ordering, and it is the whole of it:
 
 ```go
-quit := make(chan os.Signal, 1)
-signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
-<-quit
+<-ctx.Done()                      // signal
 
-httpServer.Shutdown(ctx)
-if err := client.Close(); err != nil {
-    log.Printf("logging shutdown: %v", err)   // names what it could not send
-}
+server.Shutdown(shutdownCtx)      // 1. stop serving: no new events
+client.Log("service_stopped", …)  // 2. log the shutdown itself
+client.Close()                    // 3. drain last, one attempt
+log.Printf("dropped=%d", client.Dropped())
 ```
 
-For a process whose *only* shutdown work is the client - a worker, a CLI, a cron
-job - `ctxsdk.CloseOnSignal(client)` does the same thing in one line, drains, then
-restores the default action and re-raises so the exit status is unchanged. Don't
-use it in a service that also drains connections: whichever handler finishes first
-wins, and if it is the client's you lose the shutdown events you were saving.
+Serving stops first, so nothing can log into a queue that is already draining.
+The shutdown event is logged before the drain, because a drain only sends what is
+already queued. `Close` is last, and once.
+
+The SDK deliberately offers no helper that hangs this off the signal for you. One
+that drains and re-raises has to decide when the process dies, and it cannot know
+what else your shutdown still has to do - so it either cuts your shutdown short or
+drops the events your own handler was about to log. Those four lines belong to the
+caller.
 
 ## Two things the examples are actually about
 

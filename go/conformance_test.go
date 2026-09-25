@@ -97,11 +97,9 @@ func runCase(t *testing.T, kase conformanceCase) {
 		FlushInterval: time.Duration(number(kase.Config, "flush_interval_ms", 5000)) * time.Millisecond,
 		MaxQueueSize:  number(kase.Config, "max_queue_size", runnerMaxQueueSize),
 		MaxRetries:    number(kase.Config, "max_retries", runnerMaxRetries),
-		CloseTimeout: time.Duration(
-			number(kase.Config, "close_timeout_ms", 5000)) * time.Millisecond,
-		Clock:      clock,
-		Transport:  transport,
-		Dispatcher: InlineDispatcher{},
+		Clock:         clock,
+		Transport:     transport,
+		Dispatcher:    InlineDispatcher{},
 	})
 
 	// current is the scope an unqualified step uses; via picks a named
@@ -174,9 +172,9 @@ func runCase(t *testing.T, kase conformanceCase) {
 			client.Flush()
 
 		case step["close"] != nil:
-			// The abandoned count is asserted through Dropped, which
+			// What it could not store is asserted through Dropped, which
 			// every language exposes.
-			_ = client.Close()
+			client.Close()
 
 		default:
 			t.Fatalf("unknown step: %v", step)
