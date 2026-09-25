@@ -1,0 +1,29 @@
+{
+  "name": "close_drains_the_queue",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 60000
+  },
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "close": {}
+    }
+  ],
+  "expect": {
+    "requests": [
+      {
+        "entries": [
+          {
+            "event": "a"
+          }
+        ]
+      }
+    ]
+  },
+  "why": "A short-lived batch job exits before any threshold is met, so close() has to send what is pending."
+}

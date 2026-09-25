@@ -1,0 +1,42 @@
+{
+  "name": "flushes_on_batch_size",
+  "config": {
+    "batch_size": 3,
+    "flush_interval_ms": 60000
+  },
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "log": {
+        "event": "b"
+      }
+    },
+    {
+      "log": {
+        "event": "c"
+      }
+    }
+  ],
+  "expect": {
+    "requests": [
+      {
+        "entries": [
+          {
+            "event": "a"
+          },
+          {
+            "event": "b"
+          },
+          {
+            "event": "c"
+          }
+        ]
+      }
+    ]
+  },
+  "why": "The count threshold flushes on its own, with the interval far away."
+}

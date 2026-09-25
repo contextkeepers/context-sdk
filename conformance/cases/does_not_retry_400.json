@@ -1,0 +1,27 @@
+{
+  "name": "does_not_retry_400",
+  "config": {
+    "batch_size": 1,
+    "max_retries": 3
+  },
+  "responses": [
+    {
+      "status": 400
+    }
+  ],
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "advance_ms": 60000
+    }
+  ],
+  "expect": {
+    "request_count": 1,
+    "dropped": 1
+  },
+  "why": "A malformed batch fails identically forever. Retrying is a hot loop."
+}

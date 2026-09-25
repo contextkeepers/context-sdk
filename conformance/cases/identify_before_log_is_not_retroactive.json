@@ -1,0 +1,46 @@
+{
+  "name": "identify_before_log_is_not_retroactive",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 60000
+  },
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "identify": {
+        "user_id": "user_123"
+      }
+    },
+    {
+      "log": {
+        "event": "b"
+      }
+    },
+    {
+      "flush": {}
+    }
+  ],
+  "expect": {
+    "requests": [
+      {
+        "entries": [
+          {
+            "event": "a",
+            "actor": {}
+          },
+          {
+            "event": "b",
+            "actor": {
+              "user_id": "user_123"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "why": "An already-queued event is not rewritten by a later identify. What an event says about who did it is fixed when it happened, not when the batch drains."
+}

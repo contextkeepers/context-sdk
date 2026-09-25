@@ -1,0 +1,49 @@
+{
+  "name": "base_scope_carries_no_identity",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 60000
+  },
+  "steps": [
+    {
+      "identify": {
+        "user_id": "user_123"
+      }
+    },
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "scope": "base"
+    },
+    {
+      "log": {
+        "event": "b"
+      }
+    },
+    {
+      "flush": {}
+    }
+  ],
+  "expect": {
+    "requests": [
+      {
+        "entries": [
+          {
+            "event": "a",
+            "actor": {
+              "user_id": "user_123"
+            }
+          },
+          {
+            "event": "b",
+            "actor": {}
+          }
+        ]
+      }
+    ]
+  },
+  "why": "Logging out means dropping the scope, not clearing state. The client's own scope never carried an identity to begin with."
+}

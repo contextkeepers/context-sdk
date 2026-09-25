@@ -1,0 +1,42 @@
+{
+  "name": "timestamp_is_captured_at_log_time",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 60000
+  },
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "advance_ms": 30000
+    },
+    {
+      "log": {
+        "event": "b"
+      }
+    },
+    {
+      "flush": {}
+    }
+  ],
+  "expect": {
+    "requests": [
+      {
+        "entries": [
+          {
+            "event": "a",
+            "timestamp": "1970-01-01T00:00:00.000Z"
+          },
+          {
+            "event": "b",
+            "timestamp": "1970-01-01T00:00:30.000Z"
+          }
+        ]
+      }
+    ]
+  },
+  "why": "An event happened when log() was called, not when the queue drained. Stamping at flush time collapses a session into one instant."
+}

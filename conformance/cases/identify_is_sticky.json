@@ -1,0 +1,48 @@
+{
+  "name": "identify_is_sticky",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 60000
+  },
+  "steps": [
+    {
+      "identify": {
+        "user_id": "user_123"
+      }
+    },
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "log": {
+        "event": "b"
+      }
+    },
+    {
+      "flush": {}
+    }
+  ],
+  "expect": {
+    "requests": [
+      {
+        "entries": [
+          {
+            "event": "a",
+            "actor": {
+              "user_id": "user_123"
+            }
+          },
+          {
+            "event": "b",
+            "actor": {
+              "user_id": "user_123"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "why": "Identity is set once and rides along. The caller never repeats it."
+}

@@ -1,0 +1,33 @@
+{
+  "name": "drops_after_retries_exhausted",
+  "config": {
+    "batch_size": 1,
+    "max_retries": 2
+  },
+  "responses": [
+    {
+      "status": 500
+    },
+    {
+      "status": 500
+    },
+    {
+      "status": 500
+    }
+  ],
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "advance_ms": 60000
+    }
+  ],
+  "expect": {
+    "request_count": 3,
+    "dropped": 1
+  },
+  "why": "Bounded attempts, then give up and say so. An unbounded retry is a queue that never drains."
+}

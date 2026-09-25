@@ -1,0 +1,22 @@
+{
+  "name": "log_after_close_is_dropped",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 60000
+  },
+  "steps": [
+    {
+      "close": {}
+    },
+    {
+      "log": {
+        "event": "a"
+      }
+    }
+  ],
+  "expect": {
+    "request_count": 0,
+    "dropped": 1
+  },
+  "why": "A closed client cannot promise delivery, and must not raise into a caller that is already shutting down."
+}

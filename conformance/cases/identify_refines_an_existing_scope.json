@@ -1,0 +1,59 @@
+{
+  "name": "identify_refines_an_existing_scope",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 60000
+  },
+  "steps": [
+    {
+      "identify": {
+        "organization_id": "org_42"
+      },
+      "as": "org"
+    },
+    {
+      "identify": {
+        "user_id": "user_123"
+      },
+      "via": "org",
+      "as": "member"
+    },
+    {
+      "log": {
+        "event": "a"
+      },
+      "via": "member"
+    },
+    {
+      "log": {
+        "event": "b"
+      },
+      "via": "org"
+    },
+    {
+      "flush": {}
+    }
+  ],
+  "expect": {
+    "requests": [
+      {
+        "entries": [
+          {
+            "event": "a",
+            "actor": {
+              "organization_id": "org_42",
+              "user_id": "user_123"
+            }
+          },
+          {
+            "event": "b",
+            "actor": {
+              "organization_id": "org_42"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "why": "Narrowing a scope returns a new one and leaves the original alone - the request-scoped logger cannot corrupt the one it came from."
+}

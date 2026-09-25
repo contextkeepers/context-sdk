@@ -1,0 +1,35 @@
+{
+  "name": "close_abandons_after_its_deadline",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 60000,
+    "close_timeout_ms": 100,
+    "max_retries": 10
+  },
+  "responses": [
+    {
+      "status": 500
+    },
+    {
+      "status": 500
+    },
+    {
+      "status": 500
+    }
+  ],
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "close": {}
+    }
+  ],
+  "expect": {
+    "request_count": 1,
+    "dropped": 1
+  },
+  "why": "The next backoff would outlast the deadline, so it is not attempted. A drain that outlives the grace period is SIGKILLed mid-send and loses more than it saves."
+}

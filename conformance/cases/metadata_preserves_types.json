@@ -1,0 +1,40 @@
+{
+  "name": "metadata_preserves_types",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 60000
+  },
+  "steps": [
+    {
+      "log": {
+        "event": "a",
+        "metadata": {
+          "amount": 49,
+          "plan": "pro",
+          "trial": false,
+          "ratio": 0.5
+        }
+      }
+    },
+    {
+      "flush": {}
+    }
+  ],
+  "expect": {
+    "requests": [
+      {
+        "entries": [
+          {
+            "metadata": {
+              "amount": 49,
+              "plan": "pro",
+              "trial": false,
+              "ratio": 0.5
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "why": "A number must stay a number or sum(metadata.amount) is impossible. Stringifying properties is the trap here."
+}

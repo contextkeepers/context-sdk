@@ -1,0 +1,23 @@
+{
+  "name": "holds_below_batch_size",
+  "config": {
+    "batch_size": 3,
+    "flush_interval_ms": 60000
+  },
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "log": {
+        "event": "b"
+      }
+    }
+  ],
+  "expect": {
+    "request_count": 0
+  },
+  "why": "Two of three events must not go early - otherwise batching is a no-op."
+}

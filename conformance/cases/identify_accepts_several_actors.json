@@ -1,0 +1,41 @@
+{
+  "name": "identify_accepts_several_actors",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 60000
+  },
+  "steps": [
+    {
+      "identify": {
+        "user_id": "user_123",
+        "organization_id": "org_42",
+        "device_id": "camera_7"
+      }
+    },
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "flush": {}
+    }
+  ],
+  "expect": {
+    "requests": [
+      {
+        "entries": [
+          {
+            "event": "a",
+            "actor": {
+              "user_id": "user_123",
+              "organization_id": "org_42",
+              "device_id": "camera_7"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "why": "A person acts inside an organisation on a particular machine; all of it belongs on the event and none of it should need a second call."
+}

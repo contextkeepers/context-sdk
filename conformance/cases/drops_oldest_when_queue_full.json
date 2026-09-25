@@ -1,0 +1,44 @@
+{
+  "name": "drops_oldest_when_queue_full",
+  "config": {
+    "max_queue_size": 2,
+    "batch_size": 1000,
+    "flush_interval_ms": 60000
+  },
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "log": {
+        "event": "b"
+      }
+    },
+    {
+      "log": {
+        "event": "c"
+      }
+    },
+    {
+      "flush": {}
+    }
+  ],
+  "expect": {
+    "requests": [
+      {
+        "entries": [
+          {
+            "event": "b"
+          },
+          {
+            "event": "c"
+          }
+        ]
+      }
+    ],
+    "dropped": 1
+  },
+  "why": "Recent events are worth more than old ones when the sink is unreachable."
+}

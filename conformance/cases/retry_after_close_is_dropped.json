@@ -1,0 +1,30 @@
+{
+  "name": "retry_after_close_is_dropped",
+  "config": {
+    "batch_size": 1,
+    "max_retries": 3
+  },
+  "responses": [
+    {
+      "status": 500
+    }
+  ],
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "close": {}
+    },
+    {
+      "advance_ms": 60000
+    }
+  ],
+  "expect": {
+    "request_count": 1,
+    "dropped": 1
+  },
+  "why": "A retry armed before close() still fires after it. Handing that work to a stopped dispatcher panicked the process on a closed channel; the batch is lost either way, so it is counted and dropped instead."
+}

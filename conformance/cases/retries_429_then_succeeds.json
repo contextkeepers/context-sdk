@@ -1,0 +1,30 @@
+{
+  "name": "retries_429_then_succeeds",
+  "config": {
+    "batch_size": 1,
+    "max_retries": 3
+  },
+  "responses": [
+    {
+      "status": 429
+    },
+    {
+      "status": 200
+    }
+  ],
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "advance_ms": 60000
+    }
+  ],
+  "expect": {
+    "request_count": 2,
+    "dropped": 0
+  },
+  "why": "429 is the server asking to wait, not refusing the data."
+}

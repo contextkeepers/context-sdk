@@ -1,0 +1,32 @@
+{
+  "name": "flushes_on_interval",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 5000
+  },
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "advance_ms": 4999
+    },
+    {
+      "advance_ms": 1
+    }
+  ],
+  "expect": {
+    "requests": [
+      {
+        "entries": [
+          {
+            "event": "a"
+          }
+        ]
+      }
+    ]
+  },
+  "why": "The timer flushes a batch that will never reach the count threshold."
+}

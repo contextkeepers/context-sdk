@@ -1,0 +1,21 @@
+{
+  "name": "@context/sdk",
+  "version": "0.1.0",
+  "description": "Send events to Context from the browser or node.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test test/conformance.test.ts",
+    "typecheck": "tsc"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "typescript": "^7.0.2"
+  }
+}

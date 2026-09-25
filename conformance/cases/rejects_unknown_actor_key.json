@@ -1,0 +1,19 @@
+{
+  "name": "rejects_unknown_actor_key",
+  "config": {},
+  "steps": [
+    {
+      "identify": {
+        "usr_id": "user_123"
+      }
+    }
+  ],
+  "expect": {
+    "error": "unknown_actor_key",
+    "request_count": 0
+  },
+  "why": "A typo'd identity key would silently become a fourth kind of actor that no query finds. Enforced by the type system where the language allows it, and at the call site otherwise - never by dropping the key.",
+  "skip": {
+    "go": "Identify takes a struct, so an unknown field is a compile error - the compiler enforces this more strongly than a test could"
+  }
+}

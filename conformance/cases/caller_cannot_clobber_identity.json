@@ -1,0 +1,42 @@
+{
+  "name": "caller_cannot_clobber_identity",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 60000
+  },
+  "steps": [
+    {
+      "identify": {
+        "user_id": "user_123"
+      }
+    },
+    {
+      "log": {
+        "event": "a",
+        "metadata": {
+          "user_id": "whoops"
+        }
+      }
+    },
+    {
+      "flush": {}
+    }
+  ],
+  "expect": {
+    "requests": [
+      {
+        "entries": [
+          {
+            "actor": {
+              "user_id": "user_123"
+            },
+            "metadata": {
+              "user_id": "whoops"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "why": "The two maps are separate, so a property named user_id is inert rather than dangerous. This is the whole reason actor is its own map."
+}

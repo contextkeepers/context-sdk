@@ -1,0 +1,38 @@
+{
+  "name": "partial_rejection_counts_only_the_rejected",
+  "config": {
+    "batch_size": 1000,
+    "flush_interval_ms": 60000
+  },
+  "responses": [
+    {
+      "status": 400,
+      "rejected": 2
+    }
+  ],
+  "steps": [
+    {
+      "log": {
+        "event": "a"
+      }
+    },
+    {
+      "log": {
+        "event": "b"
+      }
+    },
+    {
+      "log": {
+        "event": "c"
+      }
+    },
+    {
+      "flush": {}
+    }
+  ],
+  "expect": {
+    "request_count": 1,
+    "dropped": 2
+  },
+  "why": "A 400 carrying a report means the unnamed entries were stored. Counting the whole batch as lost would tell the customer they lost three events when they lost two."
+}
