@@ -46,3 +46,4 @@ compiling.
 
 `spec/`, `conformance/` and all three clients are written, each passing the
 full case set.
+Snapshot test.
